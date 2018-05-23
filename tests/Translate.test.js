@@ -84,15 +84,28 @@ describe('<Translate />', () => {
 
   it('should render HTML in translations', () => {
     const wrapper = getComponent(
-      <Translate id="hi" options={{defaultLanguage: 'fr'}}>Hey <a href="http://google.com">google</a></Translate>,
+      <Translate id="hi" options={{defaultLanguage: 'fr'}} data={{name: 'yahoo'}}>Hey <a href="http://google.com">google</a></Translate>,
       {
         ...initialState,
-        translations: {'hi': [undefined, '<a>Test</a>']}
+        translations: {'hi': [undefined, '<a>Test ${ name }</a>']}
       },
       mount
     );
-    expect(wrapper.html()).toContain('<a>');
+    expect(wrapper.html()).toContain('yahoo');
   });
+
+  it('should render React in translations', () => {
+    const Comp = () => <strong>google</strong>
+    const wrapper = getComponent(
+      <Translate id="hi" options={{defaultLanguage: 'fr'}} data={{ comp: 'google' }} />,
+      {
+        ...initialState,
+        translations: {'hi': [undefined, '<span>Hey ${ comp }</span>']}
+      },
+      mount
+    );
+    expect(wrapper.html()).toContain('google');
+  })
 
   it('should convert <Translate>\'s children to a string when multi-line HTML markup is provided', () => {
     const wrapper = getComponent(

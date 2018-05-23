@@ -8,15 +8,39 @@ export const getLocalizedElement = (key: string, translations: TranslatedLanguag
     if (options.missingTranslationCallback) {
       options.missingTranslationCallback(key, activeLanguage.code);
     }
-    return options.showMissingTranslationMsg === false  
-      ? ''
-      : templater(options.missingTranslationMsg || '', { key, code: activeLanguage.code });
+    if (options.showMissingTranslationMsg === false) return ''
+    const templatedMissing = templater(options.missingTranslationMsg || '', { key, code: activeLanguage.code });
+    
+    // Assume missing translations do NOT contain react components.
+    if (typeof templatedMissing === 'string') return templatedMissing;
+    return '';
   };
   const localizedString = translations[key] || onMissingTranslation();
-  const translatedValue = templater(localizedString, data)
-  return options.renderInnerHtml && hasHtmlTags(translatedValue)
-    ? React.createElement('span', { dangerouslySetInnerHTML: { __html: translatedValue }})
-    : translatedValue;
+  const translatedValue = templater(localizedString, data);
+
+  let resolvedTranslatedValue;
+  // convert to array
+  if (typeof translatedValue === 'string') {
+    resolvedTranslatedValue = [translatedValue];
+  } else {
+    resolvedTranslatedValue = translatedValue;
+  }
+
+  // check for any string html elements
+  // e.g. [ '<a href="google.com">Go</a>' ]
+  // and convert them to elements
+  const mappedRt = resolvedTranslatedValue.map(rt => {
+    if (typeof rt === 'string' && hasHtmlTags(rt) && options.renderInnerHtml) {
+      return React.createElement('span', {dangerouslySetInnerHTML: {__html: rt}});
+    }
+    return rt;
+  })
+
+  // By this point, all non-react members have been converted to strings
+  // So if the length of mappedRt is less than 2, we can return that translated
+  // string as-is.
+  // Otherwise return a span element.
+  return mappedRt.length < 2 ? mappedRt[0] || ''  : React.createElement('span', null, ...mappedRt);
 };
 
 export const hasHtmlTags = (value: string): boolean => {
@@ -32,12 +56,32 @@ export const hasHtmlTags = (value: string): boolean => {
  * @return {string} The template string with the data merged in
  */
 export const templater = (strings: string, data: Object = {}): string => {
-  for(let prop in data) {
-    const pattern = '\\${\\s*'+ prop +'\\s*}';
-    const regex = new RegExp(pattern, 'gmi');
-	  strings = strings.replace(regex, data[prop]);  	 	
-  }
-  return strings;
+  
+  const genericPlaceholderPattern = '(\\${\\s*[^\\s]+\\s*})'; // ${**}
+
+  // e.g. get ['Hey ', <Component />] or ['Hey', 'google']
+  let splitStrings = strings
+    .split(new RegExp(genericPlaceholderPattern, 'gmi'))
+    .filter(str => !!str)
+    .map(templated => {
+      let matched;
+      for (let prop in data) {
+        if (matched) break;
+        const pattern = '\\${\\s*'+ prop +'\\s*}';
+        const regex = new RegExp(pattern, 'gmi');
+        if (regex.test(templated)) matched = data[prop];
+      }
+      return matched || templated;
+    })
+  
+  // If all strings, reduce into single member
+  // e.g. from ['Hey', 'google'] -> ['Hey google']
+  // If there are any non-string elements, it will return undefined
+  const reduced = splitStrings.reduce((acc, curr) => {
+   if (typeof curr === 'string') return acc + curr;
+  }, '')
+  const res = reduced || splitStrings;
+  return res;
 };
 
 export const getIndexForLanguageCode = (code: string, languages: Language[]): number => {
