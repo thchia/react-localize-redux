@@ -22,32 +22,8 @@ export const getLocalizedElement = (key: string, translations: TranslatedLanguag
     if (translatedValue && hasHtmlTags(translatedValue) && options.renderInnerHtml) {
       return React.createElement('span', {dangerouslySetInnerHTML: {__html: translatedValue}});
     }
-    return translatedValue
+    return translatedValue;
   }
-
-  // let resolvedTranslatedValue;
-  // // convert to array
-  // if (typeof translatedValue === 'string') {
-  //   resolvedTranslatedValue = [translatedValue];
-  // } else {
-  //   resolvedTranslatedValue = translatedValue;
-  // }
-
-  // check for any string html elements
-  // e.g. [ '<a href="google.com">Go</a>' ]
-  // and convert them to elements
-  // const mappedRt = resolvedTranslatedValue.map(rt => {
-  //   if (typeof rt === 'string' && hasHtmlTags(rt) && options.renderInnerHtml) {
-  //     return React.createElement('span', {dangerouslySetInnerHTML: {__html: rt}});
-  //   }
-  //   return rt;
-  // })
-
-  // By this point, all non-react members have been converted to strings
-  // So if the length of mappedRt is less than 2, we can return that translated
-  // string as-is.
-  // Otherwise return a span element.
-  // return mappedRt.length < 2 ? mappedRt[0] || ''  : React.createElement('span', null, ...mappedRt);
   return React.createElement('span', null, ...translatedValue);
 };
 
@@ -86,11 +62,12 @@ export const templater = (strings: string, data: Object = {}): string => {
   // If all strings, reduce into single member
   // e.g. from ['Hey', 'google'] -> ['Hey google']
   // If there are any non-string elements, it will return undefined
-  const reduced = splitStrings.reduce((acc, curr) => {
-   if (typeof curr === 'string') return acc + curr;
+  if (splitStrings.some(el => typeof el !== 'string')) {
+    return splitStrings;
+  }
+  return splitStrings.reduce((acc, curr) => {
+    return acc + curr;
   }, '')
-  const res = reduced || splitStrings;
-  return res;
 };
 
 export const getIndexForLanguageCode = (code: string, languages: Language[]): number => {
