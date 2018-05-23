@@ -59,14 +59,16 @@ export const templater = (strings: string, data: Object = {}): string => {
       return matched || templated;
     })
   
-  // If all strings, reduce into single member
-  // e.g. from ['Hey', 'google'] -> ['Hey google']
-  // If there are any non-string elements, it will return undefined
-  if (splitStrings.some(el => typeof el !== 'string')) {
+  // If any elements are not strings or numbers, return as-is...
+  if (splitStrings.some(el => {
+    return typeof el !== 'string' && typeof el !== 'number'
+  })) {
     return splitStrings;
   }
+
+  // otherwise combine all the strings/numbers into one string
   return splitStrings.reduce((acc, curr) => {
-    return acc + curr;
+    return acc + `${curr}`;
   }, '')
 };
 
